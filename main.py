@@ -7,12 +7,14 @@ hands = mp_hands.Hands()
 
 # Access the default camera (usually the first connected camera)
 cap = cv2.VideoCapture(0)
+mp_drawing = mp.solutions.drawing_utils
 
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
     if not ret:
         break
+    frame = cv2.flip(frame, 1)  # 1 for horizontal flipping
 
     # Convert the image to RGB
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -21,24 +23,24 @@ while True:
     # Perform hand tracking
     results = hands.process(image)
 
-    # If hands are detected, iterate through each hand
+    # If hands are detected, extract landmarks
     if results.multi_hand_landmarks:
         for hand_landmarks in results.multi_hand_landmarks:
-            # Extract bounding box coordinates
-            h, w, c = frame.shape
-            x_min, x_max, y_min, y_max = w, 0, h, 0
-            for lm in hand_landmarks.landmark:
-                cx, cy = int(lm.x * w), int(lm.y * h)
-                x_min = min(x_min, cx)
-                x_max = max(x_max, cx)
-                y_min = min(y_min, cy)
-                y_max = max(y_max, cy)
-            
-            # Draw bounding box
-            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 3)
+            # Draw hand landmarks on the frame
+            mp_drawing.draw_landmarks(
+                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            # Get the landmark coordinates for the tip of the index finger (Landmark 8)
+            index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            height, width, _ = frame.shape
+            tip_x, tip_y = int(index_finger_tip.x * width), int(index_finger_tip.y * height)
+
+            # Display the coordinates of the index finger tip
+            cv2.putText(frame, f'Index Finger Tip: ({tip_x}, {tip_y})', (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
 
     # Display the frame
-    cv2.imshow('Hand Tracking with Bounding Box', frame)
+    cv2.imshow('Hand Tracking', frame)
 
     # Exit loop if 'q' is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
